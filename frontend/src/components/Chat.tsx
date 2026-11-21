@@ -10,35 +10,61 @@ export function Chat() {
   const [error, setError] = useState<string | null>(null);
   const [health, setHealth] = useState<string>("checking…");
   const [modelName, setModelName] = useState<string>("");
+  const [models, setModels] = useState<{ name: string; capabilities: string[] }[]>([]);
+  const [selectedModel, setSelectedModel] = useState<string>("");
   const bottomRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/health")
-      .then(async (res) => {
-        const data = (await res.json()) as {
+    async function loadOllamaState() {
+      try {
+        const [healthRes, modelsRes] = await Promise.all([
+          fetch("/api/health"),
+          fetch("/api/models"),
+        ]);
+        const data = (await healthRes.json()) as {
           status: string;
           ollama: string;
           model: string;
         };
-        if (!cancelled) {
-          setModelName(data.model);
-          if (data.status === "ok") {
-            setHealth("Online");
-          } else if (data.status === "degraded") {
-            setHealth("Model missing");
-          } else {
-            setHealth("Ollama offline");
+
+        if (cancelled) return;
+
+        const cleanModelName = data.model.replace(" (not pulled)", "");
+        setModelName(cleanModelName);
+        if (data.status === "ok") setHealth("Online");
+        else if (data.status === "degraded") setHealth("Model missing");
+        else setHealth("Ollama offline");
+
+        if (modelsRes.ok) {
+          const modelsData = (await modelsRes.json()) as {
+            models: { name: string; capabilities: string[] }[];
+          };
+          const localModels = modelsData.models;
+          setModels(localModels);
+
+          if (!selectedModel) {
+            const preferred =
+              localModels.find((model) => model.name === cleanModelName) ??
+              localModels.find((model) => model.name === `${cleanModelName}:latest`) ??
+              localModels.find((model) => model.name.replace(/:latest$/, "") === cleanModelName) ??
+              localModels[0];
+            setSelectedModel(preferred?.name ?? "");
           }
+        } else {
+          setModels([]);
         }
-      })
-      .catch(() => {
+      } catch {
         if (!cancelled) {
           setHealth("Backend offline");
           setModelName("");
+          setModels([]);
         }
-      });
+      }
+    }
+
+    void loadOllamaState();
     return () => {
       cancelled = true;
     };
@@ -59,6 +85,7 @@ export function Chat() {
     try {
       await streamChat({
         messages: nextMessages,
+        model: selectedModel || undefined,
         signal: controller.signal,
         onToken: (token) => {
           setMessages((prev) => {
@@ -94,6 +121,13 @@ export function Chat() {
   }
 
   async function handleSend({ text, images, documents }: SendPayload) {
+    if (images.length > 0) {
+      const selected = models.find((model) => model.name === selectedModel);
+      if (selected && !selected.capabilities.includes("vision")) {
+        setError(`"${selected.name}" does not support image analysis. Choose a vision model such as Gemma or Qwen.`);
+        return;
+      }
+    }
     const userMessage: ChatMessage = {
       role: "user",
       content: text,
@@ -105,6 +139,11 @@ export function Chat() {
 
   async function handleProfileAnalyze(imageDataUrl: string) {
     if (streaming) return;
+    const selected = models.find((model) => model.name === selectedModel);
+    if (selected && !selected.capabilities.includes("vision")) {
+      setError(`"${selected.name}" does not support image analysis. Choose a vision model such as Gemma or Qwen.`);
+      return;
+    }
     const userMessage: ChatMessage = {
       role: "user",
       content:
@@ -134,7 +173,27 @@ export function Chat() {
               className={`status-dot ${health === "Online" ? "is-live" : ""}`}
             />
             <span className="health">{health}</span>
-            {modelName && <span className="model-pill">{modelName}</span>}
+            {models.length > 0 ? (
+              <label className="model-select-wrap">
+                <span>Model</span>
+                <select
+                  className="model-select"
+                  value={selectedModel}
+                  onChange={(event) => setSelectedModel(event.target.value)}
+                  disabled={streaming}
+                  aria-label="Ollama model"
+                >
+                  {models.map((model) => (
+                    <option key={model.name} value={model.name}>
+                      {model.name}
+                      {model.capabilities.includes("vision") ? " — vision" : ""}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : modelName ? (
+              <span className="model-pill">{modelName}</span>
+            ) : null}
           </div>
         </div>
 
