@@ -6,8 +6,18 @@ from fastapi.responses import StreamingResponse
 from httpx import HTTPError
 
 from .file_extract import extract_document
-from .ollama_client import OLLAMA_MODEL, check_ollama, stream_chat
-from .schemas import ChatRequest, ExtractResponse, HealthResponse
+from .ollama_client import (
+    OLLAMA_MODEL,
+    check_ollama,
+    list_local_models,
+    stream_chat,
+)
+from .schemas import (
+    ChatRequest,
+    ExtractResponse,
+    HealthResponse,
+    ModelsResponse,
+)
 
 app = FastAPI(title="Ollama Chatbot API")
 
@@ -32,6 +42,15 @@ async def health() -> HealthResponse:
             model=f"{detail} (not pulled)",
         )
     return HealthResponse(status="error", ollama="unreachable", model=detail)
+
+
+@app.get("/api/models", response_model=ModelsResponse)
+async def models() -> ModelsResponse:
+    try:
+        names = await list_local_models()
+        return ModelsResponse(models=names)
+    except HTTPError as exc:
+        raise HTTPException(status_code=502, detail=f"Ollama unreachable: {exc}") from exc
 
 
 @app.post("/api/extract", response_model=ExtractResponse)

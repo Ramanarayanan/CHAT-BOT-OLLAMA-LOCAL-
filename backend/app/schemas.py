@@ -20,6 +20,15 @@ class HealthResponse(BaseModel):
     model: str
 
 
+class ModelInfo(BaseModel):
+    name: str
+    capabilities: list[str] = Field(default_factory=list)
+
+
+class ModelsResponse(BaseModel):
+    models: list[ModelInfo]
+
+
 class ExtractResponse(BaseModel):
     filename: str
     kind: Literal["pdf", "csv"]

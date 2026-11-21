@@ -67,3 +67,24 @@ async def check_ollama(model: str | None = None) -> tuple[str, str]:
             return "model_missing", target_model
     except httpx.HTTPError as exc:
         return "unreachable", str(exc)
+
+
+async def list_local_models() -> list[dict[str, Any]]:
+    """Return installed local models and their Ollama capabilities."""
+    async with httpx.AsyncClient(timeout=5.0) as client:
+        response = await client.get(f"{OLLAMA_BASE_URL}/api/tags")
+        response.raise_for_status()
+        models = response.json().get("models", [])
+
+    local_models = [
+        {
+            "name": model["name"],
+            "capabilities": sorted(set(model.get("capabilities") or [])),
+        }
+        for model in models
+        if model.get("name")
+        and not model.get("remote_model")
+        and not model.get("remote_host")
+    ]
+    unique = {model["name"]: model for model in local_models}
+    return sorted(unique.values(), key=lambda model: model["name"].lower())
