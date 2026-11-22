@@ -19,7 +19,7 @@ from .schemas import (
     ModelsResponse,
 )
 
-app = FastAPI(title="Ollama Chatbot API")
+app = FastAPI(title="Ollama Chatbot API", docs_url="/api/docs")
 
 app.add_middleware(
     CORSMiddleware,
