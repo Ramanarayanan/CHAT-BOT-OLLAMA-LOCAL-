@@ -41,6 +41,15 @@ Optional env vars in `backend/.env`:
 | `OLLAMA_MODEL` | `gemma4:12b` | Model name for chat |
 
 Health check: [http://localhost:8000/api/health](http://localhost:8000/api/health)
+API documentation: [http://localhost:8000/api/docs](http://localhost:8000/api/docs)
+
+## Tests
+
+Run the backend API tests from the `backend` directory:
+
+```bash
+python -m unittest discover -s tests -v
+```
 
 ## Frontend
 
