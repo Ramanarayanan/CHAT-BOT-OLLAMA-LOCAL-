@@ -151,15 +151,22 @@ body {
 }
 
 .model-select {
-  max-width: 220px;
+  width: min(240px, 42vw);
+  min-width: 150px;
   border: 1px solid rgba(255, 255, 255, 0.12);
   background: rgba(255, 255, 255, 0.06);
   color: var(--ink);
+  color-scheme: dark;
   border-radius: 999px;
   padding: 0.28rem 2rem 0.28rem 0.65rem;
   font: inherit;
   outline: none;
   cursor: pointer;
+}
+
+.model-select option {
+  color: var(--ink);
+  background-color: var(--bg-mid);
 }
 
 .model-select:focus {

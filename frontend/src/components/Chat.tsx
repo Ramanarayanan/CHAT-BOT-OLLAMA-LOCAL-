@@ -4,6 +4,25 @@ import { MessageInput, type SendPayload } from "./MessageInput";
 import { MessageList } from "./MessageList";
 import { ProfileUpload } from "./ProfileUpload";
 
+const capabilityLabels: Record<string, string> = {
+  audio: "Audio",
+  completion: "Text",
+  embedding: "Embeddings",
+  thinking: "Thinking",
+  tools: "Tools",
+  vision: "Vision",
+};
+
+function formatCapabilities(capabilities: string[]): string {
+  return capabilities
+    .map(
+      (capability) =>
+        capabilityLabels[capability] ??
+        capability.charAt(0).toUpperCase() + capability.slice(1),
+    )
+    .join(" · ");
+}
+
 export function Chat() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [streaming, setStreaming] = useState(false);
@@ -186,7 +205,9 @@ export function Chat() {
                   {models.map((model) => (
                     <option key={model.name} value={model.name}>
                       {model.name}
-                      {model.capabilities.includes("vision") ? " — vision" : ""}
+                      {model.capabilities.length
+                        ? ` — ${formatCapabilities(model.capabilities)}`
+                        : ""}
                     </option>
                   ))}
                 </select>
